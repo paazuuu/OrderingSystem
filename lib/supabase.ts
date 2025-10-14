@@ -1,50 +1,30 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-let supabase: SupabaseClient | null = null;
+// Supabase設定（埋め込み）
+const SUPABASE_URL = 'https://txbrrqdebofybvmgrwcq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4YnJycWRlYm9meWJ2bWdyd2NxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MzY4NjgsImV4cCI6MjA3NjAxMjg2OH0.tn8Zi6-0XlmvlIIy5yjA-RQFLGcXcKguPmjYCYX2XUw';
 
-export const initializeSupabase = async (url: string, anonKey: string) => {
-  try {
-    supabase = createClient(url, anonKey);
-    
-    // 設定を保存
-    await AsyncStorage.setItem('supabase_url', url);
-    await AsyncStorage.setItem('supabase_anon_key', anonKey);
-    
-    return supabase;
-  } catch (error) {
-    console.error('Supabase initialization error:', error);
-    throw error;
-  }
-};
+// Supabaseクライアントを初期化
+const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export const getSupabase = () => {
   return supabase;
 };
 
-export const clearSupabaseConfig = async () => {
-  supabase = null;
-  await AsyncStorage.removeItem('supabase_url');
-  await AsyncStorage.removeItem('supabase_anon_key');
+// 後方互換性のための関数（既存のコードがある場合に備えて）
+export const initializeSupabase = async (url?: string, anonKey?: string) => {
+  console.warn('initializeSupabase is deprecated. Supabase is now configured with embedded settings.');
+  return supabase;
 };
 
 export const loadSupabaseConfig = async () => {
-  try {
-    const url = await AsyncStorage.getItem('supabase_url');
-    const anonKey = await AsyncStorage.getItem('supabase_anon_key');
-    
-    if (url && anonKey) {
-      return await initializeSupabase(url, anonKey);
-    }
-    return null;
-  } catch (error) {
-    console.error('Failed to load Supabase config:', error);
-    return null;
-  }
+  return supabase;
 };
 
 export const isSupabaseConfigured = async () => {
-  const url = await AsyncStorage.getItem('supabase_url');
-  const anonKey = await AsyncStorage.getItem('supabase_anon_key');
-  return !!(url && anonKey);
+  return true;
+};
+
+export const clearSupabaseConfig = async () => {
+  console.warn('clearSupabaseConfig is no longer needed. Supabase is configured with embedded settings.');
 };
