@@ -207,6 +207,25 @@ export class DatabaseService {
     return data;
   }
 
+  // 初期データの投入（必要な場合のみ）
+  async seedInitialData(): Promise<void> {
+    try {
+      console.log('初期データ投入を開始...');
+      // テーブルの存在確認のみ行う（データは投入しない）
+      await this.testConnection();
+      console.log('初期データ投入完了（テーブル確認のみ）');
+    } catch (error) {
+      console.error('初期データ投入エラー:', error);
+      throw error;
+    }
+  }
+
+  // モックデータの移行（削除予定のメソッド）
+  async migrateMockDataToSupabase(mockTables: any[], mockMenuItems: any[], mockOrderHistory: any[]): Promise<void> {
+    console.warn('migrateMockDataToSupabase is deprecated and will be removed');
+    // 何もしない（モックデータ移行は削除）
+  }
+
   // Supabase接続テスト
   async testConnection(): Promise<void> {
     try {

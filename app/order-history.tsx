@@ -25,43 +25,12 @@ interface OrderHistoryItem {
   timestamp: Date;
 }
 
-const mockOrderHistory: OrderHistoryItem[] = [
-  {
-    id: 'mock-history-1',
-    tableNumber: '田中テーブル',
-    items: [
-      { name: '本日の日替わり定食', quantity: 2, price: 980 },
-      { name: '緑茶', quantity: 2, price: 200 },
-    ],
-    total: 2360,
-    timestamp: new Date('2024-01-15T12:30:00'),
-  },
-  {
-    id: 'mock-history-2',
-    tableNumber: '窓際席',
-    items: [
-      { name: '鶏の唐揚げ定食', quantity: 1, price: 850 },
-      { name: 'ほうじ茶', quantity: 1, price: 200 },
-    ],
-    total: 1050,
-    timestamp: new Date('2024-01-15T13:15:00'),
-  },
-  {
-    id: 'mock-history-3',
-    tableNumber: '佐藤テーブル',
-    items: [
-      { name: 'わらび餅', quantity: 1, price: 380 },
-      { name: '抹茶', quantity: 1, price: 350 },
-    ],
-    total: 730,
-    timestamp: new Date('2024-01-15T14:00:00'),
-  },
-];
+// モックデータを削除 - Supabaseから実際のデータを読み込み
 
 export default function OrderHistoryScreen() {
   const { database, isConnected } = useDatabase();
-  const [orderHistory, setOrderHistory] = useState<OrderHistoryItem[]>(mockOrderHistory);
-  const [filteredHistory, setFilteredHistory] = useState<OrderHistoryItem[]>(mockOrderHistory);
+  const [orderHistory, setOrderHistory] = useState<OrderHistoryItem[]>([]);
+  const [filteredHistory, setFilteredHistory] = useState<OrderHistoryItem[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<string>('all');

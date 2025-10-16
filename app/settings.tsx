@@ -25,64 +25,8 @@ interface MenuItem {
   description: string;
 }
 
-const initialMenuItems: MenuItem[] = [
-  {
-    id: 'mock-menu-1',
-    name: 'エスプレッソ',
-    price: 300,
-    image: 'https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=300',
-    category: 'ドリンク',
-    description: '濃厚なイタリアンエスプレッソ',
-  },
-  {
-    id: 'mock-menu-2',
-    name: 'カプチーノ',
-    price: 420,
-    image: 'https://images.pexels.com/photos/312418/pexels-photo-312418.jpeg?auto=compress&cs=tinysrgb&w=300',
-    category: 'ドリンク',
-    description: 'ふわふわミルクフォームのカプチーノ',
-  },
-  {
-    id: 'mock-menu-3',
-    name: 'ラテ',
-    price: 450,
-    image: 'https://images.pexels.com/photos/324028/pexels-photo-324028.jpeg?auto=compress&cs=tinysrgb&w=300',
-    category: 'ドリンク',
-    description: 'なめらかなミルクとエスプレッソのハーモニー',
-  },
-  {
-    id: 'mock-menu-5',
-    name: 'チーズケーキ',
-    price: 520,
-    image: 'https://images.pexels.com/photos/1126359/pexels-photo-1126359.jpeg?auto=compress&cs=tinysrgb&w=300',
-    category: 'デザート',
-    description: '濃厚でクリーミーなNYチーズケーキ',
-  },
-  {
-    id: 'mock-menu-6',
-    name: '本日の日替わり定食',
-    price: 980,
-    image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=300',
-    category: '定食',
-    description: '季節の食材を使った栄養バランスの良い定食',
-  },
-  {
-    id: 'mock-menu-7',
-    name: 'アメリカーノ',
-    price: 350,
-    image: 'https://images.pexels.com/photos/1251175/pexels-photo-1251175.jpeg?auto=compress&cs=tinysrgb&w=300',
-    category: 'ドリンク',
-    description: 'すっきりとした味わいのアメリカーノ',
-  },
-  {
-    id: 'mock-menu-9',
-    name: 'ティラミス',
-    price: 580,
-    image: 'https://images.pexels.com/photos/6880219/pexels-photo-6880219.jpeg?auto=compress&cs=tinysrgb&w=300',
-    category: 'デザート',
-    description: 'イタリア伝統のティラミス',
-  },
-];
+// モックメニューデータを削除 - Supabaseから実際のメニューを読み込み
+const initialMenuItems: MenuItem[] = [];
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -109,7 +53,7 @@ export default function SettingsScreen() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // データベースフックを追加
-  const { database, migrateMockData } = useDatabase();
+  const { database } = useDatabase();
   // Supabase設定状態をチェック
   React.useEffect(() => {
     checkSupabaseConfig();
@@ -183,16 +127,8 @@ export default function SettingsScreen() {
             text: '移行する',
             onPress: async () => {
               try {
-                // グローバルからモックデータを取得
-                const mockTables = (global as any).getAllTables?.() || [];
-                const mockOrderHistory = (global as any).getOrderHistory?.() || [];
-                
-                if (migrateMockData) {
-                  await migrateMockData(mockTables, initialMenuItems, mockOrderHistory);
-                  Alert.alert('成功', 'モックデータがSupabaseに移行されました！');
-                } else {
-                  Alert.alert('エラー', 'データ移行機能が利用できません');
-                }
+                // モックデータ移行機能を削除
+                Alert.alert('情報', '現在はSupabaseから直接データを読み込んでいます。移行機能は不要です。');
               } catch (error) {
                 console.error('移行エラー:', error);
                 Alert.alert('エラー', 'データ移行中にエラーが発生しました');

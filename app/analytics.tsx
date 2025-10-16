@@ -18,40 +18,18 @@ interface SalesData {
   orders: number;
 }
 
-const mockSalesData: SalesData[] = [
-  { date: '2024-01-01', sales: 45000, orders: 78 },
-  { date: '2024-01-02', sales: 52000, orders: 89 },
-  { date: '2024-01-03', sales: 38000, orders: 65 },
-  { date: '2024-01-04', sales: 61000, orders: 102 },
-  { date: '2024-01-05', sales: 47000, orders: 81 },
-  { date: '2024-01-06', sales: 58000, orders: 95 },
-  { date: '2024-01-07', sales: 72000, orders: 120 },
-];
-
-const monthlyData = [
-  { month: '1月', sales: 1250000, orders: 2100 },
-  { month: '2月', sales: 1180000, orders: 1950 },
-  { month: '3月', sales: 1320000, orders: 2250 },
-  { month: '4月', sales: 1280000, orders: 2150 },
-  { month: '5月', sales: 1450000, orders: 2400 },
-  { month: '6月', sales: 1380000, orders: 2300 },
-];
+// モックデータを削除し、実際のデータから算出するように修正予定
 
 export default function AnalyticsScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'monthly' | 'yearly'>('daily');
   const router = useRouter();
 
   const getCurrentData = () => {
-    switch (selectedPeriod) {
-      case 'daily':
-        return mockSalesData;
-      case 'monthly':
-        return monthlyData;
-      case 'yearly':
-        return [{ date: '2024年', sales: 15500000, orders: 26000 }];
-      default:
-        return mockSalesData;
-    }
+    // 注意: 現在はデモデータです。実際は注文履歴から集計します。
+    const demoData = [
+      { date: 'データなし', sales: 0, orders: 0 }
+    ];
+    return demoData;
   };
 
   const getTotalSales = () => {
