@@ -34,28 +34,13 @@ interface CartItem {
   category: string;
 }
 
-const initialTables: Table[] = [
-  { id: 'mock-1', number: 'T1', seats: 2, status: 'available', orders: [], totalAmount: 0 },
-  { id: 'mock-2', number: 'T2', seats: 4, status: 'occupied', orderStartTime: new Date(Date.now() - 30 * 60 * 1000), customerCount: 3, orders: [
-    { id: 'mock-item-1', name: '本日の日替わり定食', price: 980, quantity: 2, category: '定食' },
-    { id: 'mock-item-4', name: '緑茶', price: 200, quantity: 2, category: 'ドリンク' }
-  ], totalAmount: 2360 },
-  { id: 'mock-3', number: 'T3', seats: 2, status: 'available', orders: [], totalAmount: 0 },
-  { id: 'mock-4', number: 'T4', seats: 6, status: 'available', orders: [], totalAmount: 0 },
-  { id: 'mock-5', number: 'T5', seats: 4, status: 'available', orders: [], totalAmount: 0 },
-  { id: 'mock-6', number: 'T6', seats: 2, status: 'occupied', orderStartTime: new Date(Date.now() - 15 * 60 * 1000), customerCount: 2, orders: [
-    { id: 'mock-item-2', name: '鶏の唐揚げ定食', price: 850, quantity: 1, category: '定食' },
-    { id: 'mock-item-5', name: 'ほうじ茶', price: 200, quantity: 1, category: 'ドリンク' }
-  ], totalAmount: 1050 },
-  { id: 'mock-7', number: 'T7', seats: 4, status: 'available', orders: [], totalAmount: 0 },
-  { id: 'mock-8', number: 'T8', seats: 8, status: 'available', orders: [], totalAmount: 0 },
-];
+// モックデータを削除し、空の配列から開始
 
 export default function TablesScreen() {
   const { database, isLoading, error, isConnected } = useDatabase();
-  const [tables, setTables] = useState<Table[]>(initialTables);
+  const [tables, setTables] = useState<Table[]>([]);
   const [storeName, setStoreName] = useState('茶茶日和');
-  const [isUsingMockData, setIsUsingMockData] = useState(true);
+  // モックデータ判定フラグを削除
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'available' | 'occupied'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTableNumber, setNewTableNumber] = useState('');
@@ -114,8 +99,8 @@ export default function TablesScreen() {
   React.useEffect(() => {
     if (!isLoading && !isConnected) {
       Alert.alert(
-        'データベース未設定',
-        error || 'データベースが設定されていません。設定画面でデータベース接続を設定してください。\n\n現在はローカルデータで動作しています。',
+        'データベース接続エラー',
+        error || 'データベースに接続できません。.envファイルのSupabase設定を確認してください。',
         [
           { text: 'OK' },
           { 
@@ -156,12 +141,10 @@ export default function TablesScreen() {
   // データベース接続時にテーブルを読み込み
   React.useEffect(() => {
     if (database) {
-      console.log('✅ データベース接続確認 - 実データを読み込み中...');
-      setIsUsingMockData(false);
+      console.log('✅ データベース接続確認 - Supabaseデータを読み込み中...');
       loadTables();
     } else {
-      console.log('⚠️ データベース未接続 - モックデータを使用中');
-      setIsUsingMockData(true);
+      console.log('⚠️ データベース未接続 - 設定を確認してください');
     }
   }, [database]);
 
@@ -284,7 +267,7 @@ export default function TablesScreen() {
           onPress: async () => {
             console.log('💳 支払い処理開始 - テーブルID:', tableId);
             console.log('💳 データベース接続状態:', isConnected ? '接続済み' : '未接続');
-            console.log('💳 使用データ:', isUsingMockData ? 'モックデータ' : 'リアルデータ');
+            console.log('💳 使用データ: Supabaseデータ');
             
             try {
               // 注文履歴データを準備
@@ -300,7 +283,7 @@ export default function TablesScreen() {
                 timestamp: new Date(),
               };
               
-              if (database && isConnected && !isUsingMockData) {
+              if (database && isConnected) {
                 console.log('💾 データベースに注文履歴を保存中...');
                 await database.createOrderHistory({
                   table_number: table.number,
@@ -318,7 +301,7 @@ export default function TablesScreen() {
                 });
                 console.log('✅ データベーステーブル状態更新完了');
               } else {
-                console.log('⚠️ モックデータモード - ローカル処理のみ');
+                console.log('⚠️ データベース未接続 - ローカル処理のみ');
               }
               
               // 注文履歴に保存（ローカル用）
@@ -548,7 +531,7 @@ export default function TablesScreen() {
     
     // データベース接続がない場合はローカルのみ
     const newTable: Table = {
-      id: `mock-${Date.now()}`,
+      id: `table-${Date.now()}`,
       number: tableData.number,
       seats: tableData.seats,
       status: 'available',
@@ -651,7 +634,7 @@ export default function TablesScreen() {
             {isConnected ? '🟢 DB接続' : '🔴 ローカル'}
           </Text>
           <Text style={styles.dataSourceText}>
-            {isUsingMockData ? 'モック' : 'リアル'}データ
+            Supabaseデータ
           </Text>
         </View>
         <View style={styles.headerActions}>
