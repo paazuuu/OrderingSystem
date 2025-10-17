@@ -12,6 +12,7 @@ import {
 import { Calendar, TrendingUp, DollarSign, ShoppingBag, ArrowLeft, Download, X, FileText } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
+import { EncodingType } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 const { width } = Dimensions.get('window');
@@ -344,7 +345,7 @@ export default function AnalyticsScreen() {
       // CSVファイルを作成 (BOMを追加してExcelでも正しく表示されるようにする)
       const bom = '\uFEFF';
       await FileSystem.writeAsStringAsync(fileUri, bom + csvData, {
-        encoding: FileSystem.EncodingType.UTF8,
+        encoding: EncodingType.UTF8,
       });
 
       // ファイルを共有
