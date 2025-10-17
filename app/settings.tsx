@@ -10,9 +10,10 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
-import { User, Bell, Shield, CircleHelp as HelpCircle, LogOut, Store, Printer, Wifi, CreditCard, Plus, CreditCard as Edit, Trash2, Save, X, ArrowUp, ArrowDown, Database, Key, CircleCheck as CheckCircle, CircleAlert as AlertCircle, ArrowLeft } from 'lucide-react-native';
-import { initializeSupabase, clearSupabaseConfig, loadSupabaseConfig, isSupabaseConfigured } from '@/lib/supabase';
-import { useDatabase } from '@/hooks/useDatabase';
+import { User, Bell, Shield, CircleHelp as HelpCircle, LogOut, Store, Printer, Wifi, CreditCard, X, ArrowLeft } from 'lucide-react-native';
+// Supabase関連のインポートはエンジニア向け機能として非表示
+// import { initializeSupabase, clearSupabaseConfig, loadSupabaseConfig, isSupabaseConfigured } from '@/lib/supabase';
+// import { useDatabase } from '@/hooks/useDatabase';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -33,11 +34,12 @@ export default function SettingsScreen() {
   const [notifications, setNotifications] = useState(true);
   const [receiptPrinting, setReceiptPrinting] = useState(false);
   const [soundEffects, setSoundEffects] = useState(true);
-  const [supabaseConfigured, setSupabaseConfigured] = useState(false);
-  const [showSupabaseModal, setShowSupabaseModal] = useState(false);
-  const [supabaseUrl, setSupabaseUrl] = useState('');
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
-  const [isMigrating, setIsMigrating] = useState(false);
+  // Supabase関連のステートはエンジニア向け機能として非表示
+  // const [supabaseConfigured, setSupabaseConfigured] = useState(false);
+  // const [showSupabaseModal, setShowSupabaseModal] = useState(false);
+  // const [supabaseUrl, setSupabaseUrl] = useState('');
+  // const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
+  // const [isMigrating, setIsMigrating] = useState(false);
   
   // 店舗情報設定
   const [storeName, setStoreName] = useState('');
@@ -52,11 +54,12 @@ export default function SettingsScreen() {
   });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  // データベースフックを追加
-  const { database } = useDatabase();
-  // Supabase設定状態をチェック
+  // データベースフックはエンジニア向け機能として非表示
+  // const { database } = useDatabase();
+  
+  // 初期化処理
   React.useEffect(() => {
-    checkSupabaseConfig();
+    // checkSupabaseConfig(); // エンジニア向け機能として非表示
     loadStoreName();
   }, []);
 
@@ -89,6 +92,8 @@ export default function SettingsScreen() {
     }
   };
 
+  // Supabase関連の関数はエンジニア向け機能として非表示
+  /*
   const checkSupabaseConfig = async () => {
     const configured = await isSupabaseConfigured();
     setSupabaseConfigured(configured);
@@ -98,71 +103,13 @@ export default function SettingsScreen() {
   };
 
   const handleSupabaseSetup = async () => {
-    if (!supabaseUrl.trim() || !supabaseAnonKey.trim()) {
-      Alert.alert('エラー', 'URLとAPIキーの両方を入力してください');
-      return;
-    }
-
-    try {
-      setIsMigrating(true);
-      await initializeSupabase(supabaseUrl.trim(), supabaseAnonKey.trim());
-      setSupabaseConfigured(true);
-      setShowSupabaseModal(false);
-      setSupabaseUrl('');
-      setSupabaseAnonKey('');
-      
-      // モックデータを移行
-      Alert.alert(
-        'データ移行',
-        'Supabaseの設定が完了しました。現在のモックデータをデータベースに移行しますか？',
-        [
-          {
-            text: 'スキップ',
-            onPress: () => {
-              setIsMigrating(false);
-              Alert.alert('完了', 'Supabaseの設定が完了しました。');
-            }
-          },
-          {
-            text: '移行する',
-            onPress: async () => {
-              try {
-                // モックデータ移行機能を削除
-                Alert.alert('情報', '現在はSupabaseから直接データを読み込んでいます。移行機能は不要です。');
-              } catch (error) {
-                console.error('移行エラー:', error);
-                Alert.alert('エラー', 'データ移行中にエラーが発生しました');
-              } finally {
-                setIsMigrating(false);
-              }
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      setIsMigrating(false);
-      Alert.alert('エラー', 'Supabaseの設定に失敗しました。URLとAPIキーを確認してください。');
-    }
+    // ... エンジニア向け機能
   };
 
   const handleSupabaseReset = () => {
-    Alert.alert(
-      'Supabase設定をリセット',
-      'Supabaseの設定を削除しますか？この操作は元に戻せません。',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '削除',
-          style: 'destructive',
-          onPress: async () => {
-            await clearSupabaseConfig();
-            setSupabaseConfigured(false);
-            Alert.alert('完了', 'Supabaseの設定が削除されました');
-          },
-        },
-      ]
-    );
+    // ... エンジニア向け機能
   };
+  */
 
   const handleStoreInfoSave = async () => {
     if (!tempStoreName.trim()) {
@@ -284,29 +231,7 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>データベース設定</Text>
-          <SettingItem
-            icon={supabaseConfigured ? 
-              <CheckCircle size={24} color="#10B981" /> : 
-              <AlertCircle size={24} color="#EF4444" />
-            }
-            title="Supabase接続"
-            subtitle={supabaseConfigured ? 
-              "データベースに接続済み" : 
-              "データベースに未接続 - 設定が必要です"
-            }
-            onPress={() => setShowSupabaseModal(true)}
-          />
-          {supabaseConfigured && (
-            <SettingItem
-              icon={<Trash2 size={24} color="#EF4444" />}
-              title="データベース設定をリセット"
-              subtitle="Supabase接続設定を削除"
-              onPress={handleSupabaseReset}
-            />
-          )}
-        </View>
+        {/* データベース設定セクションを非表示にしました（エンジニア向け機能のため） */}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>店舗設定</Text>
@@ -529,87 +454,7 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* Supabase設定モーダル */}
-      <Modal
-        visible={showSupabaseModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowSupabaseModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Supabase設定</Text>
-              <TouchableOpacity
-                style={styles.modalHeaderButton}
-                onPress={() => setShowSupabaseModal(false)}
-              >
-                <X size={20} color="#8B4513" />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.supabaseForm}>
-              <Text style={styles.formDescription}>
-                Supabaseプロジェクトの設定情報を入力してください
-              </Text>
-              
-              <Text style={styles.inputLabel}>Project URL</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="https://your-project.supabase.co"
-                value={supabaseUrl}
-                onChangeText={setSupabaseUrl}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              
-              <Text style={styles.inputLabel}>Anon Key</Text>
-              <TextInput
-                style={[styles.input, styles.keyInput]}
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                value={supabaseAnonKey}
-                onChangeText={setSupabaseAnonKey}
-                autoCapitalize="none"
-                autoCorrect={false}
-                secureTextEntry={true}
-                multiline={true}
-              />
-              
-              <View style={styles.helpText}>
-                <Text style={styles.helpTextContent}>
-                  これらの情報はSupabaseプロジェクトの「Settings」→「API」で確認できます
-                </Text>
-              </View>
-              
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => {
-                    setShowSupabaseModal(false);
-                    setSupabaseUrl('');
-                    setSupabaseAnonKey('');
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>キャンセル</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={styles.saveButton}
-                  onPress={handleSupabaseSetup}
-                >
-                  <Text style={styles.saveButtonText}>保存</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-          
-          {isMigrating && (
-            <View style={styles.migrationStatus}>
-              <Text style={styles.migrationText}>データを移行中...</Text>
-            </View>
-          )}
-        </View>
-      </Modal>
+      {/* Supabase設定モーダルを非表示にしました（エンジニア向け機能のため） */}
     </View>
   );
 }
