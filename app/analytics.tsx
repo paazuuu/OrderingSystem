@@ -8,11 +8,11 @@ import {
   Dimensions,
   Modal,
   Alert,
+  Platform,
 } from 'react-native';
 import { Calendar, TrendingUp, DollarSign, ShoppingBag, ArrowLeft, Download, X, FileText } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
-import { EncodingType } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 const { width } = Dimensions.get('window');
@@ -324,9 +324,9 @@ export default function AnalyticsScreen() {
 
       // ファイル名を生成
       const now = new Date();
-      const dateString = now.toISOString().substring(0, 10); // YYYY-MM-DD
+      const dateString = now.toISOString().substring(0, 10);
       let periodLabel = '';
-      
+
       if (selectedPeriod === 'daily') {
         periodLabel = '日次';
       } else if (selectedPeriod === 'monthly') {
@@ -338,29 +338,42 @@ export default function AnalyticsScreen() {
           periodLabel = '年次';
         }
       }
-      
+
       const fileName = `茶茶日和_注文履歴_${periodLabel}_${dateString}.csv`;
-      const fileUri = FileSystem.cacheDirectory + fileName;
 
-      // CSVファイルを作成 (BOMを追加してExcelでも正しく表示されるようにする)
-      const bom = '\uFEFF';
-      await FileSystem.writeAsStringAsync(fileUri, bom + csvData, {
-        encoding: EncodingType.UTF8,
-      });
+      if (Platform.OS === 'web') {
+        const bom = '\uFEFF';
+        const blob = new Blob([bom + csvData], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
-      // ファイルを共有
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/csv',
-          dialogTitle: '注文履歴CSVをエクスポート',
-          UTI: 'public.comma-separated-values-text',
-        });
+        Alert.alert('成功', `CSVファイル "${fileName}" をダウンロードしました`);
       } else {
-        Alert.alert('エラー', '共有機能が利用できません');
-      }
+        const fileUri = FileSystem.cacheDirectory + fileName;
+        const bom = '\uFEFF';
+        await FileSystem.writeAsStringAsync(fileUri, bom + csvData, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
 
-      Alert.alert('成功', `CSVファイル "${fileName}" を生成しました`);
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'text/csv',
+            dialogTitle: '注文履歴CSVをエクスポート',
+            UTI: 'public.comma-separated-values-text',
+          });
+        } else {
+          Alert.alert('エラー', '共有機能が利用できません');
+        }
+
+        Alert.alert('成功', `CSVファイル "${fileName}" を生成しました`);
+      }
     } catch (error) {
       console.error('CSV生成エラー:', error);
       Alert.alert('エラー', 'CSVファイルの生成に失敗しました');
