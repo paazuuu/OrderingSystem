@@ -39,6 +39,7 @@ export interface OrderHistory {
   items: any;
   total_amount: number;
   completed_at?: string;
+  deleted_at?: string | null;
 }
 
 export class DatabaseService {
@@ -185,26 +186,37 @@ export class DatabaseService {
     if (error) throw error;
   }
 
-  // 注文履歴操作
+  // 注文履歴操作（論理削除されていないもののみ取得）
   async getOrderHistory(): Promise<OrderHistory[]> {
     const { data, error } = await this.supabase
       .from('order_history')
       .select('*')
+      .is('deleted_at', null)
       .order('completed_at', { ascending: false });
-    
+
     if (error) throw error;
     return data || [];
   }
 
-  async createOrderHistory(history: Omit<OrderHistory, 'id' | 'completed_at'>): Promise<OrderHistory> {
+  async createOrderHistory(history: Omit<OrderHistory, 'id' | 'completed_at' | 'deleted_at'>): Promise<OrderHistory> {
     const { data, error } = await this.supabase
       .from('order_history')
       .insert(history)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
+  }
+
+  // 注文履歴の論理削除
+  async softDeleteOrderHistory(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('order_history')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw error;
   }
 
   // 初期データの投入（必要な場合のみ）

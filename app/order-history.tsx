@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Pressable,
 } from 'react-native';
 import { Clock, Receipt, Trash2, RefreshCw, ArrowLeft, CreditCard as Edit, Save, X, Plus, Minus, Search, Filter, Calendar } from 'lucide-react-native';
 import { useDatabase } from '@/hooks/useDatabase';
@@ -167,6 +168,34 @@ export default function OrderHistoryScreen() {
     });
   };
 
+  const handleDeleteOrder = (orderId: string, tableNumber: string) => {
+    Alert.alert(
+      '注文履歴を削除',
+      `テーブル ${tableNumber} の注文履歴を削除しますか？\n\nこの操作は取り消せません。`,
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (database && isConnected) {
+                await database.softDeleteOrderHistory(orderId);
+                Alert.alert('削除完了', '注文履歴を削除しました');
+                await loadOrderHistory();
+              } else {
+                Alert.alert('エラー', 'データベースに接続されていません');
+              }
+            } catch (error) {
+              console.error('削除エラー:', error);
+              Alert.alert('エラー', '注文履歴の削除に失敗しました');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -280,27 +309,33 @@ export default function OrderHistoryScreen() {
           )
         ) : (
           filteredHistory.map(order => (
-            <View key={order.id} style={styles.orderCard}>
-              <View style={styles.orderHeader}>
-                <Text style={styles.tableNumber}>{order.tableNumber}</Text>
-                <Text style={styles.orderDate}>{formatDate(order.timestamp)}</Text>
+            <Pressable
+              key={order.id}
+              onLongPress={() => handleDeleteOrder(order.id, order.tableNumber)}
+              delayLongPress={500}
+            >
+              <View style={styles.orderCard}>
+                <View style={styles.orderHeader}>
+                  <Text style={styles.tableNumber}>{order.tableNumber}</Text>
+                  <Text style={styles.orderDate}>{formatDate(order.timestamp)}</Text>
+                </View>
+
+                <View style={styles.orderItems}>
+                  {order.items.map((item, index) => (
+                    <View key={index} style={styles.orderItem}>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      <Text style={styles.itemQuantity}>× {item.quantity}</Text>
+                      <Text style={styles.itemPrice}>¥{(item.price * item.quantity).toLocaleString()}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                <View style={styles.orderTotal}>
+                  <Text style={styles.totalLabel}>合計</Text>
+                  <Text style={styles.totalAmount}>¥{order.total.toLocaleString()}</Text>
+                </View>
               </View>
-              
-              <View style={styles.orderItems}>
-                {order.items.map((item, index) => (
-                  <View key={index} style={styles.orderItem}>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <Text style={styles.itemQuantity}>× {item.quantity}</Text>
-                    <Text style={styles.itemPrice}>¥{(item.price * item.quantity).toLocaleString()}</Text>
-                  </View>
-                ))}
-              </View>
-              
-              <View style={styles.orderTotal}>
-                <Text style={styles.totalLabel}>合計</Text>
-                <Text style={styles.totalAmount}>¥{order.total.toLocaleString()}</Text>
-              </View>
-            </View>
+            </Pressable>
           ))
         )}
       </ScrollView>
