@@ -10,7 +10,9 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
-import { User, Bell, Shield, CircleHelp as HelpCircle, LogOut, Store, Printer, Wifi, CreditCard, X, ArrowLeft } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp as HelpCircle, Store, Printer, Wifi, CreditCard, X, ArrowLeft, Download, FileText, Calendar } from 'lucide-react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 // Supabase関連のインポートはエンジニア向け機能として非表示
 // import { initializeSupabase, clearSupabaseConfig, loadSupabaseConfig, isSupabaseConfigured } from '@/lib/supabase';
 // import { useDatabase } from '@/hooks/useDatabase';
@@ -53,6 +55,11 @@ export default function SettingsScreen() {
     paypay: false,
   });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  
+  // CSV ダウンロード設定
+  const [showCsvModal, setShowCsvModal] = useState(false);
+  const [csvSelectedMonth, setCsvSelectedMonth] = useState<string>('all');
+  const [isGeneratingCsv, setIsGeneratingCsv] = useState(false);
 
   // データベースフックはエンジニア向け機能として非表示
   // const { database } = useDatabase();
@@ -167,15 +174,149 @@ export default function SettingsScreen() {
     Alert.alert('近日公開', 'この機能は近日公開予定です');
   };
 
-  const confirmLogout = () => {
-    Alert.alert(
-      'ログアウト',
-      'ログアウトしますか？',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        { text: 'ログアウト', style: 'destructive', onPress: showComingSoon },
-      ]
-    );
+  // 注文履歴データを取得する関数
+  const getOrderHistory = () => {
+    // データベースから取得を試みる
+    if ((global as any).getOrderHistory) {
+      return (global as any).getOrderHistory() || [];
+    }
+    return [];
+  };
+
+  // 利用可能な月のリストを取得
+  const getAvailableMonths = () => {
+    const orderHistory = getOrderHistory();
+    const months = new Set<string>();
+    orderHistory.forEach((order: any) => {
+      const orderDate = new Date(order.timestamp || order.completed_at);
+      const month = orderDate.toISOString().substring(0, 7);
+      months.add(month);
+    });
+    return Array.from(months).sort().reverse();
+  };
+
+  const formatMonthLabel = (month: string) => {
+    const [year, monthNum] = month.split('-');
+    return `${year}年${parseInt(monthNum)}月`;
+  };
+
+  // CSVデータを生成する関数
+  const generateCsvData = (selectedMonth: string) => {
+    const orderHistory = getOrderHistory();
+    let filteredHistory = [...orderHistory];
+
+    // 月フィルタを適用
+    if (selectedMonth !== 'all') {
+      filteredHistory = filteredHistory.filter((order: any) => {
+        const orderDate = new Date(order.timestamp || order.completed_at);
+        const orderMonth = orderDate.toISOString().substring(0, 7);
+        return orderMonth === selectedMonth;
+      });
+    }
+
+    // CSVヘッダー
+    const headers = [
+      '注文ID',
+      'テーブル番号',
+      '注文日時',
+      '商品名',
+      '数量',
+      '単価',
+      '小計',
+      '合計金額'
+    ];
+
+    // CSVデータを構築
+    let csvData = headers.join(',') + '\n';
+
+    filteredHistory.forEach((order: any) => {
+      const orderDate = new Date(order.timestamp || order.completed_at);
+      const formattedDate = orderDate.toLocaleDateString('ja-JP') + ' ' + orderDate.toLocaleTimeString('ja-JP');
+      
+      if (order.items && order.items.length > 0) {
+        order.items.forEach((item: any, index: number) => {
+          const row = [
+            order.id,
+            order.tableNumber || order.table_number,
+            formattedDate,
+            `"${item.name}"`, // 商品名をクォートで囲む
+            item.quantity,
+            item.price,
+            item.price * item.quantity,
+            index === 0 ? order.total || order.total_amount : '' // 合計は最初の行のみ表示
+          ];
+          csvData += row.join(',') + '\n';
+        });
+      } else {
+        // アイテムがない場合の行
+        const row = [
+          order.id,
+          order.tableNumber || order.table_number,
+          formattedDate,
+          '"データなし"',
+          0,
+          0,
+          0,
+          order.total || order.total_amount
+        ];
+        csvData += row.join(',') + '\n';
+      }
+    });
+
+    return csvData;
+  };
+
+  // CSVファイルをダウンロードする関数
+  const downloadCsv = async (selectedMonth: string) => {
+    try {
+      setIsGeneratingCsv(true);
+      
+      const csvData = generateCsvData(selectedMonth);
+      
+      // ファイル名を生成
+      const now = new Date();
+      const dateString = now.toISOString().substring(0, 10); // YYYY-MM-DD
+      const monthLabel = selectedMonth === 'all' ? '全期間' : formatMonthLabel(selectedMonth);
+      const fileName = `茶茶日和_注文履歴_${monthLabel}_${dateString}.csv`;
+      
+      // ファイルパスを生成
+      const fileUri = FileSystem.documentDirectory + fileName;
+      
+      // CSVファイルを作成
+      await FileSystem.writeAsStringAsync(fileUri, csvData, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      
+      // ファイルを共有
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/csv',
+          dialogTitle: '注文履歴CSVをエクスポート',
+          UTI: 'public.comma-separated-values-text',
+        });
+      } else {
+        Alert.alert('エラー', '共有機能が利用できません');
+      }
+      
+      Alert.alert('成功', `CSVファイル "${fileName}" を生成しました`);
+    } catch (error) {
+      console.error('CSV生成エラー:', error);
+      Alert.alert('エラー', 'CSVファイルの生成に失敗しました');
+    } finally {
+      setIsGeneratingCsv(false);
+    }
+  };
+
+  const handleCsvDownload = async () => {
+    const orderHistory = getOrderHistory();
+    if (orderHistory.length === 0) {
+      Alert.alert('データなし', '注文履歴がありません。CSVファイルを生成できません。');
+      return;
+    }
+
+    await downloadCsv(csvSelectedMonth);
+    setShowCsvModal(false);
   };
 
 
@@ -232,6 +373,16 @@ export default function SettingsScreen() {
 
       <ScrollView style={styles.content}>
         {/* データベース設定セクションを非表示にしました（エンジニア向け機能のため） */}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>データ管理</Text>
+          <SettingItem
+            icon={<Download size={24} color="#8B4513" />}
+            title="注文履歴エクスポート"
+            subtitle="CSVファイルとして注文データをダウンロード"
+            onPress={() => setShowCsvModal(true)}
+          />
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>店舗設定</Text>
@@ -312,12 +463,7 @@ export default function SettingsScreen() {
           />
         </View>
 
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.logoutButton} onPress={confirmLogout}>
-            <LogOut size={24} color="#DC2626" />
-            <Text style={styles.logoutText}>ログアウト</Text>
-          </TouchableOpacity>
-        </View>
+
 
         <View style={styles.versionInfo}>
           <Text style={styles.versionText}>バージョン 1.0.0</Text>
@@ -454,6 +600,110 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
+      {/* CSV ダウンロード設定モーダル */}
+      <Modal
+        visible={showCsvModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCsvModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>注文履歴CSVエクスポート</Text>
+              <TouchableOpacity
+                style={styles.modalHeaderButton}
+                onPress={() => setShowCsvModal(false)}
+              >
+                <X size={20} color="#8B4513" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.csvExportForm}>
+              <Text style={styles.formDescription}>
+                エクスポートする期間を選択してください
+              </Text>
+              
+              <Text style={styles.inputLabel}>エクスポート期間</Text>
+              
+              <ScrollView style={styles.monthSelectionList}>
+                <TouchableOpacity
+                  style={[
+                    styles.monthSelectionOption,
+                    csvSelectedMonth === 'all' && styles.monthSelectionOptionSelected
+                  ]}
+                  onPress={() => setCsvSelectedMonth('all')}
+                >
+                  <FileText size={20} color={csvSelectedMonth === 'all' ? '#FFFFFF' : '#8B4513'} />
+                  <Text style={[
+                    styles.monthSelectionText,
+                    csvSelectedMonth === 'all' && styles.monthSelectionTextSelected
+                  ]}>
+                    すべての期間
+                  </Text>
+                  {csvSelectedMonth === 'all' && (
+                    <View style={styles.selectedIndicator} />
+                  )}
+                </TouchableOpacity>
+                
+                {getAvailableMonths().map(month => (
+                  <TouchableOpacity
+                    key={month}
+                    style={[
+                      styles.monthSelectionOption,
+                      csvSelectedMonth === month && styles.monthSelectionOptionSelected
+                    ]}
+                    onPress={() => setCsvSelectedMonth(month)}
+                  >
+                    <Calendar size={20} color={csvSelectedMonth === month ? '#FFFFFF' : '#8B4513'} />
+                    <Text style={[
+                      styles.monthSelectionText,
+                      csvSelectedMonth === month && styles.monthSelectionTextSelected
+                    ]}>
+                      {formatMonthLabel(month)}
+                    </Text>
+                    {csvSelectedMonth === month && (
+                      <View style={styles.selectedIndicator} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              
+              <View style={styles.csvExportInfo}>
+                <Text style={styles.csvExportInfoText}>
+                  💡 CSVファイルには注文ID、テーブル番号、注文日時、商品詳細、金額が含まれます。
+                  売上計算やデータ分析にご利用ください。
+                </Text>
+              </View>
+              
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setShowCsvModal(false);
+                    setCsvSelectedMonth('all');
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>キャンセル</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.saveButton, isGeneratingCsv && styles.saveButtonDisabled]}
+                  onPress={handleCsvDownload}
+                  disabled={isGeneratingCsv}
+                >
+                  {isGeneratingCsv ? (
+                    <Text style={styles.saveButtonText}>生成中...</Text>
+                  ) : (
+                    <Text style={styles.saveButtonText}>ダウンロード</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Supabase設定モーダルを非表示にしました（エンジニア向け機能のため） */}
     </View>
   );
@@ -544,25 +794,7 @@ const styles = StyleSheet.create({
     color: '#666666',
     marginTop: 2,
   },
-  logoutButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#DC2626',
-    marginLeft: 10,
-  },
+
   versionInfo: {
     alignItems: 'center',
     marginTop: 30,
@@ -706,6 +938,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#0369A1',
     textAlign: 'center',
+  },
+  csvExportForm: {
+    paddingVertical: 10,
+  },
+  monthSelectionList: {
+    maxHeight: 200,
+    marginVertical: 10,
+  },
+  monthSelectionOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5E6D3',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  monthSelectionOptionSelected: {
+    backgroundColor: '#8B4513',
+    borderColor: '#8B4513',
+  },
+  monthSelectionText: {
+    fontSize: 16,
+    color: '#8B4513',
+    fontWeight: '500',
+    marginLeft: 10,
+    flex: 1,
+  },
+  monthSelectionTextSelected: {
+    color: '#FFFFFF',
+  },
+  selectedIndicator: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  csvExportInfo: {
+    backgroundColor: '#F0F9FF',
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 15,
+    marginBottom: 20,
+  },
+  csvExportInfoText: {
+    fontSize: 13,
+    color: '#0369A1',
+    lineHeight: 18,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#CCCCCC',
   },
   migrationStatus: {
     backgroundColor: '#FEF3C7',
