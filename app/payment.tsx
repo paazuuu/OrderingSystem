@@ -140,7 +140,7 @@ export default function PaymentScreen() {
                   {
                     text: 'OK',
                     onPress: () => {
-                      router.back();
+                      router.push('/(tabs)');
                     },
                   },
                 ]
