@@ -47,8 +47,6 @@ interface ProductSalesData {
 
 export default function AnalyticsScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState<'daily' | 'monthly' | 'yearly'>('daily');
-  const [showCsvModal, setShowCsvModal] = useState(false);
-  const [csvSelectedMonth, setCsvSelectedMonth] = useState<string>('all');
   const [isGeneratingCsv, setIsGeneratingCsv] = useState(false);
   const [startMonth, setStartMonth] = useState<string>('');
   const [endMonth, setEndMonth] = useState<string>('');
@@ -235,17 +233,31 @@ export default function AnalyticsScreen() {
 
   const maxSales = Math.max(...getCurrentData().map((item) => item.sales), 1);
 
-  // CSVデータを生成する関数
-  const generateCsvData = (selectedMonth: string) => {
+  // CSVデータを生成する関数（現在の表示期間を使用）
+  const generateCsvData = () => {
+    const currentData = getCurrentData();
     const orderHistory = getOrderHistory();
     let filteredHistory = [...orderHistory];
 
-    // 月フィルタを適用
-    if (selectedMonth !== 'all') {
+    // 現在の表示期間に基づいてフィルタ
+    if (currentData.length > 0) {
+      const dates = currentData.map(item => item.date);
+      const minDate = dates[0];
+      const maxDate = dates[dates.length - 1];
+      
       filteredHistory = filteredHistory.filter((order) => {
         const orderDate = new Date(order.timestamp || order.completed_at || '');
-        const orderMonth = orderDate.toISOString().substring(0, 7);
-        return orderMonth === selectedMonth;
+        let dateKey = '';
+        
+        if (selectedPeriod === 'daily') {
+          dateKey = orderDate.toISOString().substring(0, 10);
+        } else if (selectedPeriod === 'monthly') {
+          dateKey = orderDate.toISOString().substring(0, 7);
+        } else if (selectedPeriod === 'yearly') {
+          dateKey = orderDate.getFullYear().toString();
+        }
+        
+        return dateKey >= minDate && dateKey <= maxDate;
       });
     }
 
@@ -302,26 +314,37 @@ export default function AnalyticsScreen() {
     return csvData;
   };
 
-  // CSVファイルをダウンロードする関数
-  const downloadCsv = async (selectedMonth: string) => {
+  // CSVファイルをダウンロードする関数（現在の表示期間を使用）
+  const downloadCsv = async () => {
     try {
       setIsGeneratingCsv(true);
 
-      const csvData = generateCsvData(selectedMonth);
+      const csvData = generateCsvData();
 
       // ファイル名を生成
       const now = new Date();
       const dateString = now.toISOString().substring(0, 10); // YYYY-MM-DD
-      const monthLabel = selectedMonth === 'all' ? '全期間' : formatMonthLabel(selectedMonth);
-      const fileName = `茶茶日和_注文履歴_${monthLabel}_${dateString}.csv`;
-
-      // ファイルパスを生成
-      const fileUri = FileSystem.documentDirectory + fileName;
+      let periodLabel = '';
+      
+      if (selectedPeriod === 'daily') {
+        periodLabel = '日次';
+      } else if (selectedPeriod === 'monthly') {
+        periodLabel = '月次';
+      } else if (selectedPeriod === 'yearly') {
+        if (startMonth && endMonth) {
+          periodLabel = `年次_${formatMonthLabel(startMonth)}-${formatMonthLabel(endMonth)}`;
+        } else {
+          periodLabel = '年次';
+        }
+      }
+      
+      const fileName = `茶茶日和_注文履歴_${periodLabel}_${dateString}.csv`;
+      const fileUri = FileSystem.cacheDirectory + fileName;
 
       // CSVファイルを作成 (BOMを追加してExcelでも正しく表示されるようにする)
       const bom = '\uFEFF';
       await FileSystem.writeAsStringAsync(fileUri, bom + csvData, {
-        encoding: 'utf8',
+        encoding: FileSystem.EncodingType.UTF8,
       });
 
       // ファイルを共有
@@ -352,8 +375,13 @@ export default function AnalyticsScreen() {
       return;
     }
 
-    await downloadCsv(csvSelectedMonth);
-    setShowCsvModal(false);
+    const currentData = getCurrentData();
+    if (currentData.length === 0) {
+      Alert.alert('データなし', '現在の表示期間にはデータがありません。');
+      return;
+    }
+
+    await downloadCsv();
   };
 
   const renderChart = () => {
@@ -434,8 +462,12 @@ export default function AnalyticsScreen() {
           <ArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>売上分析</Text>
-        <TouchableOpacity onPress={() => setShowCsvModal(true)}>
-          <Download size={24} color="#FFFFFF" />
+        <TouchableOpacity 
+          style={styles.downloadButton}
+          onPress={handleCsvDownload}
+          disabled={isGeneratingCsv}
+        >
+          <Download size={24} color={isGeneratingCsv ? "#CCCCCC" : "#FFFFFF"} />
         </TouchableOpacity>
       </View>
 
@@ -559,114 +591,6 @@ export default function AnalyticsScreen() {
         </View>
       </ScrollView>
 
-      {/* CSV ダウンロード設定モーダル */}
-      <Modal
-        visible={showCsvModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowCsvModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>注文履歴CSVエクスポート</Text>
-              <TouchableOpacity
-                style={styles.modalHeaderButton}
-                onPress={() => setShowCsvModal(false)}
-              >
-                <X size={20} color="#8B4513" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.csvExportForm}>
-              <Text style={styles.formDescription}>エクスポートする期間を選択してください</Text>
-
-              <Text style={styles.inputLabel}>エクスポート期間</Text>
-
-              <ScrollView style={styles.monthSelectionList}>
-                <TouchableOpacity
-                  style={[
-                    styles.monthSelectionOption,
-                    csvSelectedMonth === 'all' && styles.monthSelectionOptionSelected,
-                  ]}
-                  onPress={() => setCsvSelectedMonth('all')}
-                >
-                  <FileText
-                    size={20}
-                    color={csvSelectedMonth === 'all' ? '#FFFFFF' : '#8B4513'}
-                  />
-                  <Text
-                    style={[
-                      styles.monthSelectionText,
-                      csvSelectedMonth === 'all' && styles.monthSelectionTextSelected,
-                    ]}
-                  >
-                    すべての期間
-                  </Text>
-                  {csvSelectedMonth === 'all' && <View style={styles.selectedIndicator} />}
-                </TouchableOpacity>
-
-                {getAvailableMonths().map((month) => (
-                  <TouchableOpacity
-                    key={month}
-                    style={[
-                      styles.monthSelectionOption,
-                      csvSelectedMonth === month && styles.monthSelectionOptionSelected,
-                    ]}
-                    onPress={() => setCsvSelectedMonth(month)}
-                  >
-                    <Calendar
-                      size={20}
-                      color={csvSelectedMonth === month ? '#FFFFFF' : '#8B4513'}
-                    />
-                    <Text
-                      style={[
-                        styles.monthSelectionText,
-                        csvSelectedMonth === month && styles.monthSelectionTextSelected,
-                      ]}
-                    >
-                      {formatMonthLabel(month)}
-                    </Text>
-                    {csvSelectedMonth === month && <View style={styles.selectedIndicator} />}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <View style={styles.csvExportInfo}>
-                <Text style={styles.csvExportInfoText}>
-                  💡 CSVファイルには注文ID、テーブル番号、注文日時、商品詳細、金額が含まれます。
-                  売上計算やデータ分析にご利用ください。
-                </Text>
-              </View>
-
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => {
-                    setShowCsvModal(false);
-                    setCsvSelectedMonth('all');
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>キャンセル</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.saveButton, isGeneratingCsv && styles.saveButtonDisabled]}
-                  onPress={handleCsvDownload}
-                  disabled={isGeneratingCsv}
-                >
-                  {isGeneratingCsv ? (
-                    <Text style={styles.saveButtonText}>生成中...</Text>
-                  ) : (
-                    <Text style={styles.saveButtonText}>ダウンロード</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       {/* 年次期間選択モーダル */}
       <Modal
         visible={showDateRangeModal}
@@ -779,6 +703,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  downloadButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -1032,9 +964,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  csvExportForm: {
-    paddingVertical: 10,
-  },
   dateRangeForm: {
     paddingVertical: 10,
   },
@@ -1086,36 +1015,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
     borderWidth: 2,
     borderColor: '#FFFFFF',
-  },
-  csvExportInfo: {
-    backgroundColor: '#F0F9FF',
-    padding: 15,
-    borderRadius: 8,
-    marginTop: 15,
-    marginBottom: 20,
-  },
-  csvExportInfoText: {
-    fontSize: 13,
-    color: '#0369A1',
-    lineHeight: 18,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  cancelButton: {
-    backgroundColor: '#E5E5E5',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    flex: 0.45,
-  },
-  cancelButtonText: {
-    color: '#666666',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    fontSize: 14,
   },
   saveButton: {
     backgroundColor: '#8B4513',
